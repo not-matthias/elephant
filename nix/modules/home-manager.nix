@@ -1,11 +1,12 @@
-flake:
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
+flake: {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
   cfg = config.programs.elephant;
-  
+
   # Available providers
   providerOptions = {
     files = "File search and management";
@@ -18,8 +19,7 @@ let
     menus = "Custom menu system";
     providerlist = "Provider listing and management";
   };
-in
-{
+in {
   options.programs.elephant = {
     enable = mkEnableOption "Elephant launcher backend";
 
@@ -33,7 +33,7 @@ in
     providers = mkOption {
       type = types.listOf (types.enum (attrNames providerOptions));
       default = attrNames providerOptions;
-      example = [ "files" "desktopapplications" "calc" ];
+      example = ["files" "desktopapplications" "calc"];
       description = ''
         List of providers to enable. Available providers:
         ${concatStringsSep "\n" (mapAttrsToList (name: desc: "  - ${name}: ${desc}") providerOptions)}
@@ -66,7 +66,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    home.packages = [ cfg.package ];
+    home.packages = [cfg.package];
 
     # Install providers to user config
     home.activation.elephantProviders = lib.hm.dag.entryAfter ["writeBoundary"] ''
@@ -75,11 +75,12 @@ in
 
       # Copy enabled providers
       ${concatStringsSep "\n" (map (provider: ''
-        if [[ -f "${cfg.package}/lib/elephant/providers/${provider}.so" ]]; then
-          $DRY_RUN_CMD cp "${cfg.package}/lib/elephant/providers/${provider}.so" "$HOME/.config/elephant/providers/"
-          $VERBOSE_ECHO "Installed elephant provider: ${provider}"
-        fi
-      '') cfg.providers)}
+          if [[ -f "${cfg.package}/lib/elephant/providers/${provider}.so" ]]; then
+            $DRY_RUN_CMD cp "${cfg.package}/lib/elephant/providers/${provider}.so" "$HOME/.config/elephant/providers/"
+            $VERBOSE_ECHO "Installed elephant provider: ${provider}"
+          fi
+        '')
+        cfg.providers)}
     '';
 
     # Generate elephant config file
@@ -90,8 +91,8 @@ in
     systemd.user.services.elephant = {
       Unit = {
         Description = "Elephant launcher backend";
-        After = [ "graphical-session-pre.target" ];
-        PartOf = [ "graphical-session.target" ];
+        After = ["graphical-session-pre.target"];
+        PartOf = ["graphical-session.target"];
       };
 
       Service = {
@@ -99,13 +100,13 @@ in
         ExecStart = "${cfg.package}/bin/elephant ${optionalString cfg.debug "--debug"}";
         Restart = "on-failure";
         RestartSec = 1;
-        
+
         # Clean up socket on stop
         ExecStopPost = "${pkgs.coreutils}/bin/rm -f /tmp/elephant.sock";
       };
 
       Install = {
-        WantedBy = [ "graphical-session.target" ];
+        WantedBy = ["graphical-session.target"];
       };
     };
   };
