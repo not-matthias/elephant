@@ -155,33 +155,8 @@
         
         installPhase = ''
           mkdir -p $out/bin $out/lib/elephant
-          
-          # Copy elephant binary
           cp ${self.packages.${pkgs.system}.elephant}/bin/elephant $out/bin/
-          
-          # Copy providers
           cp -r ${self.packages.${pkgs.system}.elephant-providers}/lib/elephant/providers $out/lib/elephant/
-          
-          # Create setup script
-          cat > $out/bin/elephant-setup <<EOF
-#!/usr/bin/env bash
-set -e
-
-echo "🐘 Setting up Elephant providers..."
-
-# Create config directory
-mkdir -p ~/.config/elephant/providers
-
-# Copy providers to user config
-cp $out/lib/elephant/providers/*.so ~/.config/elephant/providers/
-
-echo "✅ Elephant providers installed to ~/.config/elephant/providers/"
-echo ""
-echo "🚀 Usage:"
-echo "  elephant --debug    # Start elephant service"
-echo "  elephant listproviders  # List installed providers"
-EOF
-          chmod +x $out/bin/elephant-setup
         '';
         
         meta = with lib; {

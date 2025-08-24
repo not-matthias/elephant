@@ -92,7 +92,6 @@ in
       };
     };
 
-    # Add elephant to system packages
     environment.systemPackages = [ cfg.package ];
   };
 }

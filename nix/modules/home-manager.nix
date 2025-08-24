@@ -40,12 +40,6 @@ in
       '';
     };
 
-    autoStart = mkOption {
-      type = types.bool;
-      default = false;
-      description = "Whether to automatically start elephant service with the session.";
-    };
-
     debug = mkOption {
       type = types.bool;
       default = false;
@@ -92,8 +86,7 @@ in
       source = (pkgs.formats.toml {}).generate "elephant.toml" cfg.config;
     };
 
-    # Auto-start service if enabled
-    systemd.user.services.elephant = mkIf cfg.autoStart {
+    systemd.user.services.elephant = {
       Unit = {
         Description = "Elephant launcher backend";
         After = [ "graphical-session-pre.target" ];
