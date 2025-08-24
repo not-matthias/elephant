@@ -25,9 +25,10 @@ var (
 )
 
 type Config struct {
-	common.Config `koanf:",squash"`
-	Locale        string `koanf:"locale" desc:"locale to use for symbols" default:"en"`
-	History       bool   `koanf:"history" desc:"make use of history for sorting" default:"false"`
+	common.Config    `koanf:",squash"`
+	Locale           string `koanf:"locale" desc:"locale to use for symbols" default:"en"`
+	History          bool   `koanf:"history" desc:"make use of history for sorting" default:"true"`
+	HistoryWhenEmpty bool   `koanf:"history_when_empty" desc:"consider history when query is empty" default:"false"`
 }
 
 var config *Config
@@ -40,8 +41,9 @@ func init() {
 			Icon:     "face-smile",
 			MinScore: 50,
 		},
-		Locale:  "en",
-		History: false,
+		Locale:           "en",
+		History:          true,
+		HistoryWhenEmpty: false,
 	}
 
 	common.LoadConfig(Name, config)
@@ -149,9 +151,11 @@ func Query(qid uint32, iid uint32, query string, _ bool, exact bool) []*pb.Query
 		}
 
 		var usageScore int32
-		if config.History && (score > config.MinScore || query == "") {
-			usageScore = h.CalcUsageScore(query, k)
-			score = score + usageScore
+		if config.History {
+			if score > config.MinScore || query == "" && config.HistoryWhenEmpty {
+				usageScore = h.CalcUsageScore(query, k)
+				score = score + usageScore
+			}
 		}
 
 		if usageScore != 0 || score > config.MinScore || query == "" {

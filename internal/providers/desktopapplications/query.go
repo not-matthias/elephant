@@ -68,7 +68,7 @@ func Query(qid uint32, iid uint32, query string, _ bool, exact bool) []*pb.Query
 		}
 
 		var usageScore int32
-		if config.History && (score > config.MinScore || query == "") {
+		if config.History && score > config.MinScore || (query == "" && config.HistoryWhenEmpty) {
 			usageScore = h.CalcUsageScore(query, k)
 			score = score + usageScore
 		}
@@ -127,9 +127,11 @@ func Query(qid uint32, iid uint32, query string, _ bool, exact bool) []*pb.Query
 			}
 
 			var usageScore int32
-			if config.History && (score > config.MinScore || query == "") {
-				usageScore = h.CalcUsageScore(query, identifier)
-				score = score + usageScore
+			if config.History {
+				if score > config.MinScore || query == "" && config.HistoryWhenEmpty {
+					usageScore = h.CalcUsageScore(query, identifier)
+					score = score + usageScore
+				}
 			}
 
 			if (query == "" && config.ShowActionsWithoutQuery) || (query != "" && config.ShowActions) || usageScore != 0 {

@@ -34,9 +34,10 @@ type ExplicitItem struct {
 }
 
 type Config struct {
-	common.Config `koanf:",squash"`
-	History       bool           `koanf:"history" desc:"make use of history for sorting" default:"false"`
-	Explicits     []ExplicitItem `koanf:"explicits" desc:"use this explicit list, instead of searching $PATH" default:""`
+	common.Config    `koanf:",squash"`
+	History          bool           `koanf:"history" desc:"make use of history for sorting" default:"true"`
+	HistoryWhenEmpty bool           `koanf:"history_when_empty" desc:"consider history when query is empty" default:"false"`
+	Explicits        []ExplicitItem `koanf:"explicits" desc:"use this explicit list, instead of searching $PATH" default:""`
 }
 
 var (
@@ -59,7 +60,8 @@ func init() {
 			Icon:     "utilities-terminal",
 			MinScore: 50,
 		},
-		History: true,
+		History:          true,
+		HistoryWhenEmpty: false,
 	}
 
 	common.LoadConfig(Name, config)
@@ -224,9 +226,11 @@ func Query(qid uint32, iid uint32, query string, _ bool, exact bool) []*pb.Query
 		}
 
 		var usageScore int32
-		if config.History && (e.Score > config.MinScore || query == "") {
-			usageScore = h.CalcUsageScore(query, e.Identifier)
-			e.Score = e.Score + usageScore
+		if config.History {
+			if e.Score > config.MinScore || query == "" && config.HistoryWhenEmpty {
+				usageScore = h.CalcUsageScore(query, e.Identifier)
+				e.Score = e.Score + usageScore
+			}
 		}
 
 		if e.Score > config.MinScore || query == "" {
