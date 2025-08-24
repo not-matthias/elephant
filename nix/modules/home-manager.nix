@@ -71,7 +71,8 @@ in
     # Install providers to user config
     home.activation.elephantProviders = lib.hm.dag.entryAfter ["writeBoundary"] ''
       $DRY_RUN_CMD mkdir -p $HOME/.config/elephant/providers
-      
+      $DRY_RUN_CMD mkdir -p $HOME/.config/elephant/providers/*.so
+
       # Copy enabled providers
       ${concatStringsSep "\n" (map (provider: ''
         if [[ -f "${cfg.package}/lib/elephant/providers/${provider}.so" ]]; then
