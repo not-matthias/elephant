@@ -34,6 +34,10 @@ func Activate(qid uint32, identifier, action string, arguments string) {
 		toRun = files[parts[0]].Exec
 	}
 
+	if files[parts[0]].Terminal {
+		toRun = common.WrapWithTerminal(toRun)
+	}
+
 	cmd := exec.Command("sh", "-c", strings.TrimSpace(fmt.Sprintf("%s %s %s", prefix, toRun, arguments)))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
