@@ -1,14 +1,27 @@
-flake: {
-  config,
-  lib,
-  pkgs,
-  ...
-}:
-with lib; let
-  cfg = config.services.elephant;
-in {
-  options.services.elephant = {
-    enable = mkEnableOption "Elephant launcher backend system service";
+flake:
+{ config, lib, pkgs, ... }:
+
+with lib;
+
+let
+  cfg = config.programs.elephant;
+  
+  # Available providers
+  providerOptions = {
+    files = "File search and management";
+    desktopapplications = "Desktop application launcher";
+    calc = "Calculator and unit conversion";
+    runner = "Command runner";
+    clipboard = "Clipboard history management";
+    symbols = "Symbols and emojis";
+    websearch = "Web search integration";
+    menus = "Custom menu system";
+    providerlist = "Provider listing and management";
+  };
+in
+{
+  options.programs.elephant = {
+    enable = mkEnableOption "Elephant launcher backend";
 
     package = mkOption {
       type = types.package;
@@ -17,81 +30,89 @@ in {
       description = "The elephant package to use.";
     };
 
-    user = mkOption {
-      type = types.str;
-      default = "elephant";
-      description = "User under which elephant runs.";
+    providers = mkOption {
+      type = types.listOf (types.enum (attrNames providerOptions));
+      default = attrNames providerOptions;
+      example = [ "files" "desktopapplications" "calc" ];
+      description = ''
+        List of providers to enable. Available providers:
+        ${concatStringsSep "\n" (mapAttrsToList (name: desc: "  - ${name}: ${desc}") providerOptions)}
+      '';
     };
 
-    group = mkOption {
-      type = types.str;
-      default = "elephant";
-      description = "Group under which elephant runs.";
+    autoStart = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Whether to automatically start elephant service with the session.";
     };
 
     debug = mkOption {
       type = types.bool;
       default = false;
-      description = "Enable debug logging.";
+      description = "Enable debug logging for elephant service.";
     };
 
     config = mkOption {
       type = types.attrs;
       default = {};
+      example = literalExpression ''
+        {
+          providers = {
+            files = {
+              min_score = 50;
+            };
+            desktopapplications = {
+              launch_prefix = "uwsm app --";
+            };
+          };
+        }
+      '';
       description = "Elephant configuration as Nix attributes.";
     };
   };
 
   config = mkIf cfg.enable {
-    users.users.${cfg.user} = {
-      description = "Elephant launcher backend user";
-      group = cfg.group;
-      isSystemUser = true;
-      home = "/var/lib/elephant";
-      createHome = true;
-    };
+    home.packages = [ cfg.package ];
 
-    users.groups.${cfg.group} = {};
+    # Install providers to user config
+    home.activation.elephantProviders = lib.hm.dag.entryAfter ["writeBoundary"] ''
+      $DRY_RUN_CMD mkdir -p $HOME/.config/elephant/providers
+      
+      # Copy enabled providers
+      ${concatStringsSep "\n" (map (provider: ''
+        if [[ -f "${cfg.package}/lib/elephant/providers/${provider}.so" ]]; then
+          $DRY_RUN_CMD cp "${cfg.package}/lib/elephant/providers/${provider}.so" "$HOME/.config/elephant/providers/"
+          $VERBOSE_ECHO "Installed elephant provider: ${provider}"
+        fi
+      '') cfg.providers)}
+    '';
 
-    # Install providers system-wide
-    environment.etc."xdg/elephant/providers" = {
-      source = "${cfg.package}/lib/elephant/providers";
-    };
-
-    # System-wide config
-    environment.etc."xdg/elephant/elephant.toml" = mkIf (cfg.config != {}) {
+    # Generate elephant config file
+    xdg.configFile."elephant/elephant.toml" = mkIf (cfg.config != {}) {
       source = (pkgs.formats.toml {}).generate "elephant.toml" cfg.config;
     };
 
-    systemd.services.elephant = {
-      description = "Elephant launcher backend";
-      wantedBy = ["multi-user.target"];
-      after = ["network.target"];
+    # Auto-start service if enabled
+    systemd.user.services.elephant = mkIf cfg.autoStart {
+      Unit = {
+        Description = "Elephant launcher backend";
+        After = [ "graphical-session-pre.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
 
-      serviceConfig = {
+      Service = {
         Type = "simple";
-        User = cfg.user;
-        Group = cfg.group;
         ExecStart = "${cfg.package}/bin/elephant ${optionalString cfg.debug "--debug"}";
         Restart = "on-failure";
         RestartSec = 1;
-
-        # Security settings
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-        ReadWritePaths = ["/var/lib/elephant" "/tmp"];
-
+        
         # Clean up socket on stop
         ExecStopPost = "${pkgs.coreutils}/bin/rm -f /tmp/elephant.sock";
       };
 
-      environment = {
-        HOME = "/var/lib/elephant";
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
       };
     };
-
-    environment.systemPackages = [cfg.package];
   };
 }
