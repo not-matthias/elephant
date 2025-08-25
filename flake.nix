@@ -44,7 +44,7 @@
         
         src = ./.;
         
-        vendorHash = "sha256-bx6/ww7jE8VxDgSLVB12PeXGgxd3k/Brfjhl3qSJBL4=";
+        vendorHash = "sha256-MQ97Z+xOdjYfcV+XxpXP5n7ep87rWVAZgx+EK6KIiVg=";
         
         buildInputs = with pkgs; [
           protobuf
